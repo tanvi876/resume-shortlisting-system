@@ -1,16 +1,8 @@
-"""
-Smoke test for the evaluation pipeline.
-Uses minimal mocking — tests the actual flow end-to-end.
-Run with: python -m pytest tests/ -v
-"""
-
 import pytest
-from src.models import ParsedResume, JobDescription, Tier
-from src.scoring_engine import compute_scores, _score_exact_match
+from src.models import ParsedResume, JobDescription, Tier, MultiDimensionalScores, DimensionalScore
+from src.scoring_engine import _score_exact_match
 from src.question_generator import classify_tier
 
-
-# ─── Unit: Exact Match Score ──────────────────────────────────────────────────
 
 def test_exact_match_perfect():
     resume = ParsedResume(
@@ -34,15 +26,13 @@ def test_exact_match_zero():
     assert score.score < 20
 
 
-# ─── Unit: Tier Classification ────────────────────────────────────────────────
-
 def test_tier_a_threshold():
-    from src.models import MultiDimensionalScores, DimensionalScore
+    d = lambda s: DimensionalScore(score=s, explanation="", evidence=[])
     scores = MultiDimensionalScores(
-        exact_match=DimensionalScore(score=80, explanation="", evidence=[]),
-        semantic_similarity=DimensionalScore(score=80, explanation="", evidence=[]),
-        achievement=DimensionalScore(score=70, explanation="", evidence=[]),
-        ownership=DimensionalScore(score=65, explanation="", evidence=[]),
+        exact_match=d(80),
+        semantic_similarity=d(80),
+        achievement=d(70),
+        ownership=d(65),
         overall=76.25,
     )
     tier, _ = classify_tier(scores)
@@ -50,43 +40,33 @@ def test_tier_a_threshold():
 
 
 def test_tier_c_threshold():
-    from src.models import MultiDimensionalScores, DimensionalScore
+    d = lambda s: DimensionalScore(score=s, explanation="", evidence=[])
     scores = MultiDimensionalScores(
-        exact_match=DimensionalScore(score=20, explanation="", evidence=[]),
-        semantic_similarity=DimensionalScore(score=25, explanation="", evidence=[]),
-        achievement=DimensionalScore(score=30, explanation="", evidence=[]),
-        ownership=DimensionalScore(score=20, explanation="", evidence=[]),
+        exact_match=d(20),
+        semantic_similarity=d(25),
+        achievement=d(30),
+        ownership=d(20),
         overall=23.75,
     )
     tier, _ = classify_tier(scores)
     assert tier == Tier.C
 
 
-# ─── Integration: Full pipeline (requires API key) ────────────────────────────
-
 @pytest.mark.integration
 def test_full_pipeline_with_sample():
-    """Integration test — requires ANTHROPIC_API_KEY in environment."""
-    import os
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        pytest.skip("ANTHROPIC_API_KEY not set")
-
+    """Integration test — requires GROQ_API_KEY in environment."""
+    import os, json
+    if not os.getenv("GROQ_API_KEY"):
+        pytest.skip("GROQ_API_KEY not set")
     from src.pipeline import evaluate
-
-    with open("sample_data/sample_resume.txt") as f:
-        resume_text = f.read()
-
-    import json
-    with open("sample_data/sample_jd.json") as f:
-        jd_dict = json.load(f)
-
+    resume_text = open("sample_data/sample_resume.txt").read()
+    jd_dict = json.load(open("sample_data/sample_jd.json"))
     report = evaluate(
         resume_text=resume_text,
         jd_dict=jd_dict,
         skip_verification=True,
     )
-
-    assert report.candidate_name  # name was extracted
+    assert report.candidate_name
     assert 0 <= report.scores.overall <= 100
     assert report.tier in (Tier.A, Tier.B, Tier.C)
     assert len(report.interview_questions) > 0
