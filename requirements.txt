@@ -1,0 +1,12 @@
+anthropic>=0.40.0
+sentence-transformers>=3.0.0
+pdfplumber>=0.11.0
+streamlit>=1.40.0
+pydantic>=2.8.0
+python-dotenv>=1.0.0
+requests>=2.32.0
+numpy>=1.26.0
+pytest>=8.0.0
+groq>=0.9.0
+torch>=2.0.0
+transformers>=4.30.0
