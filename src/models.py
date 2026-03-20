@@ -20,8 +20,8 @@ class WorkExperience(BaseModel):
 
 
 class Education(BaseModel):
-    institution: str
-    degree: str
+    institution: str = "Unknown"
+    degree: str = "Unknown"
     field: str = ""
     year: Optional[int] = None
 
@@ -44,7 +44,7 @@ class ParsedResume(BaseModel):
 
 
 class JobDescription(BaseModel):
-    title: str
+    title: str = "Unknown Role"
     required_skills: List[str] = []
     preferred_skills: List[str] = []
     min_years_experience: float = 0.0
@@ -56,7 +56,7 @@ class JobDescription(BaseModel):
 
 class DimensionalScore(BaseModel):
     score: float = Field(..., ge=0, le=100)
-    explanation: str
+    explanation: str = ""
     evidence: List[str] = Field(default_factory=list)
 
 
@@ -69,29 +69,29 @@ class MultiDimensionalScores(BaseModel):
 
 
 class VerificationResult(BaseModel):
-    platform: str
-    url: str
-    verified: bool
+    platform: str = ""
+    url: str = ""
+    verified: bool = False
     details: Dict[str, Any] = {}
     red_flags: List[str] = []
     positive_signals: List[str] = []
 
 
 class InterviewQuestion(BaseModel):
-    question: str
-    category: str
-    rationale: str
+    question: str = ""
+    category: str = "General"
+    rationale: str = ""
     follow_up: Optional[str] = None
 
 
 class CandidateReport(BaseModel):
-    candidate_name: str
-    job_title: str
+    candidate_name: str = "Unknown"
+    job_title: str = "Unknown"
     tier: Tier
-    tier_explanation: str
+    tier_explanation: str = ""
     scores: MultiDimensionalScores
     verification_results: List[VerificationResult] = []
     interview_questions: List[InterviewQuestion] = []
-    overall_recommendation: str
+    overall_recommendation: str = ""
     red_flags: List[str] = []
     strengths: List[str] = []
