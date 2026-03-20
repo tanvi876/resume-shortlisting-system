@@ -32,6 +32,7 @@ Rules:
 - Separate skills (conceptual) from tools_and_technologies (concrete).
 - duration_months: convert year ranges to months.
 - achievements must contain numbers/percentages. Skip vague statements.
+- If work_experience has no real entries, return an empty array [].
 
 Resume text:
 """

@@ -11,8 +11,8 @@ class Tier(str, Enum):
 
 
 class WorkExperience(BaseModel):
-    company: str
-    title: str
+    company: str = "Unknown"
+    title: str = "Unknown"
     duration_months: int = 0
     responsibilities: List[str] = []
     achievements: List[str] = []
