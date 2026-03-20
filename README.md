@@ -37,24 +37,6 @@ streamlit run app.py
 
 ---
 
-## Architecture
-
-```
-                    ┌──────────────────────────────────────────┐
-                    │               pipeline.py                │
-                    │         (Single Orchestration Layer)     │
-                    └──┬──────────┬──────────┬────────────────┘
-                       │          │          │
-             ┌─────────▼──┐  ┌───▼────┐  ┌──▼──────────────┐
-             │  Resume    │  │Scoring │  │  Verification   │
-             │  Parser    │  │Engine  │  │  Engine         │
-             └─────────┬──┘  └───┬────┘  └──┬──────────────┘
-                       │         │           │
-                    ┌──▼─────────▼───────────▼──┐
-                    │      Question Generator    │
-                    │   (Tier → Questions)       │
-                    └────────────────────────────┘
-```
 
 | Module | Responsibility |
 |--------|---------------|
