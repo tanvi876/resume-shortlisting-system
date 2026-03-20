@@ -1,15 +1,41 @@
-# AI Resume Shortlisting & Interview Assistant
+# 🎯 RecruitAI — AI Resume Shortlisting & Interview Assistant
 
-An end-to-end system that automates candidate evaluation by comparing resumes against Job Descriptions, verifying public claims, and generating tailored interview question sets.
+An end-to-end system that automates candidate evaluation by parsing resumes, scoring them against Job Descriptions across 4 dimensions, verifying GitHub claims, and generating tailored interview question sets.
+
+> **Stack:** Python · Groq (Llama 3.3 70B) · Sentence Transformers · Streamlit · Pydantic
+> **Track:** AI / Backend
+
+---
 
 ## Demo
+
+![Main UI](assets/1.png)
+![Add a JD text, and upload the resume. Click on "Run Evaluation":](assets/3.png)
+![Results (descriptive):](assets/4.png)
+![](assets/5.png)
+![Also generates questions for the candidate:](assets/6.png)
+
+---
+
+## Quick Start
+
 ```bash
+git clone https://github.com/tanvi876/resume-shortlisting-system.git
+cd resume-shortlisting-system
+
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env  # add your ANTHROPIC_API_KEY
+
+cp .env.example .env
+# Add your GROQ_API_KEY to .env
+
 streamlit run app.py
 ```
 
+---
+
 ## Architecture
+
 ```
                     ┌──────────────────────────────────────────┐
                     │               pipeline.py                │
@@ -27,76 +53,98 @@ streamlit run app.py
                     └────────────────────────────┘
 ```
 
-### Components
-
 | Module | Responsibility |
 |--------|---------------|
-| `resume_parser.py` | PDF → text → LLM call → structured `ParsedResume` |
+| `resume_parser.py` | PDF/text -> LLM call -> structured `ParsedResume` |
 | `scoring_engine.py` | 4-dimensional scoring with embeddings + LLM |
-| `verification_engine.py` | GitHub REST API checks |
+| `verification_engine.py` | GitHub REST API claim verification |
 | `question_generator.py` | Tier classification + tailored question generation |
-| `pipeline.py` | Orchestrates all of the above |
+| `pipeline.py` | Orchestrates all modules end-to-end |
 | `app.py` | Streamlit UI |
+
+---
 
 ## Scoring Model
 
 | Dimension | Weight | Method |
 |-----------|--------|--------|
-| Exact Match | 30% | Case-insensitive keyword intersection |
-| Semantic Similarity | 30% | `all-MiniLM-L6-v2` cosine similarity matrix |
-| Achievement | 25% | LLM evaluation of quantified impact claims |
-| Ownership | 15% | LLM analysis of leadership/initiative language |
+| **Exact Match** | 30% | Case-insensitive keyword intersection against JD requirements |
+| **Semantic Similarity** | 30% | `all-MiniLM-L6-v2` cosine similarity matrix |
+| **Achievement** | 25% | LLM evaluation of quantified impact claims |
+| **Ownership** | 15% | LLM analysis of leadership and initiative language |
 
-### Why Semantic Similarity catches Kafka ↔ RabbitMQ
+### How Semantic Similarity catches Kafka vs RabbitMQ
 
-Both terms embed in the same region of the vector space (message queuing concepts). When we compute the cosine similarity matrix between JD terms and resume terms, a candidate with RabbitMQ experience scores ~0.72 similarity against a Kafka requirement — surfaced in the explanation with an evidence string like `'Kafka' ↔ 'RabbitMQ' (sim=0.72)`.
+Both terms sit close together in the embedding space since they're both message queue technologies. The scoring matrix computes cosine similarity between every JD term and every resume term, so a candidate with RabbitMQ experience will score around 0.72 similarity against a Kafka requirement. This gets surfaced in the score explanation as evidence like `'Kafka' <-> 'RabbitMQ' (sim=0.72)`.
 
 ### Tier Classification
 
 | Tier | Score | Action |
 |------|-------|--------|
-| A | ≥72 | Fast-track |
-| B | 48–71 | Technical Screen |
-| C | <48 | Calibration call |
+| 🟢 A | >= 72 | Fast-track to final round |
+| 🟡 B | 48-71 | Technical screen |
+| 🔴 C | < 48 | Calibration call first |
 
-## Scalability (Design Notes)
+---
 
-For 10,000+ resumes/day:
+## GitHub Verification
 
-1. **Async processing**: Replace synchronous LLM calls with async batching using `asyncio` + Anthropic's batch API
-2. **Queue-based ingestion**: Push resumes to SQS/Kafka; worker pool pulls and evaluates
-3. **Embedding caching**: JD embeddings are computed once per JD and cached in Redis (they don't change)
-4. **Rate limiting**: GitHub verification is the bottleneck (60 req/hr unauthenticated); use token pool + exponential backoff
-5. **Storage**: Write reports to PostgreSQL; use Pinecone or pgvector for similarity search across all evaluated candidates
-6. **Horizontal scaling**: Each pipeline.evaluate() call is stateless — deploy as container replicas behind a load balancer
+For each candidate-provided GitHub URL, the system checks:
+- Account age (flags accounts under 90 days old)
+- Original repos vs forks
+- Recent push activity
+- Language distribution vs claimed skills
+- Community stars received
 
-## Running Tests
+LinkedIn URLs are validated for format only since LinkedIn blocks scraping.
+
+---
+
+## Scalability Notes
+
+For 10,000+ resumes/day the main changes would be:
+
+1. **Async processing** - swap synchronous LLM calls for async batching; Groq handles high-throughput well
+2. **Queue-based ingestion** - push resumes to SQS/Kafka and have a worker pool evaluate them
+3. **Embedding caching** - JD embeddings only need to be computed once per JD and can be cached in Redis
+4. **GitHub rate limiting** - 60 req/hr unauthenticated is a bottleneck; token pool + exponential backoff solves this
+5. **Storage** - write reports to PostgreSQL and use pgvector for similarity search across evaluated candidates
+6. **Horizontal scaling** - every `pipeline.evaluate()` call is stateless so you can just run more container replicas
+
+---
+
+## Tests
+
 ```bash
-# Unit tests only (no API key required)
+# Unit tests, no API key needed
 python -m pytest tests/ -v -m "not integration"
 
-# Integration tests (requires ANTHROPIC_API_KEY)
+# Full integration test, needs GROQ_API_KEY
 python -m pytest tests/ -v
 ```
+
+---
 
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Yes | Claude API key |
-| `GITHUB_TOKEN` | No | Increases GitHub rate limit from 60 to 5000 req/hr |
+| `GROQ_API_KEY` | Yes | Groq API key (free at console.groq.com) |
+| `GITHUB_TOKEN` | No | Raises GitHub rate limit from 60 to 5000 req/hr |
 
-## AI Usage Disclosure
+---
+
+## AI Usage
 
 **What I used AI for:**
-- Brainstorming the four scoring dimensions and their weights
-- Drafting initial prompt templates for the achievement and ownership scorers
-- Debugging a JSON parsing edge case where the model occasionally wrapped output in markdown fences
+- Brainstorming the four scoring dimensions and weights
+- First drafts of the achievement and ownership scorer prompts
+- Debugging a JSON parsing issue where the model kept wrapping output in markdown fences
 
-**What I reviewed and changed manually:**
-- All prompt templates were iterated on manually — the initial ownership prompt generated generic outputs; I added the explicit instruction to cite specific language from the resume, which dramatically improved explainability
-- The semantic similarity approach was designed independently — I chose `sentence-transformers` over asking the LLM to rate similarity because it's deterministic, fast, and doesn't incur extra API costs per comparison
-- The tier thresholds (72/48) were set after testing against 5 sample resumes
+**What I changed manually:**
+- All prompts were iterated by hand. The ownership scorer was initially too generic; adding an explicit instruction to cite specific language from the resume made a big difference to explainability
+- Chose `sentence-transformers` over LLM-based similarity scoring myself. It's deterministic, fast, and doesn't add API costs per comparison
+- Tier thresholds (72/48) were set by testing against a few sample resumes, not pulled from anywhere
 
-**One example where I disagreed with the AI's suggestion:**
-The AI suggested using LangChain's structured output parser for the JSON extraction layer. I chose to write the extraction logic manually (with a regex fence-stripper and `json.loads`) because LangChain adds significant dependency weight and the extraction logic is simple enough that the abstraction doesn't pay for itself here.
+**Where I disagreed with AI:**
+The AI suggested LangChain's structured output parser for JSON extraction. I skipped it because LangChain is heavy for what's essentially a `json.loads` call with a two-line regex fence-stripper. Keeping it manual also makes it easier to debug when the model misbehaves.
