@@ -297,7 +297,7 @@ if run:
             elif "invalid api key" in error_msg or "401" in error_msg:
                 st.error("⚠️ API key issue. Please check your GROQ_API_KEY.")
             elif "validation" in error_msg:
-                st.error("⚠️ Resume too sparse to evaluate. Please provide a more detailed resume.")
+                st.error("⚠️ Could not process this resume. Try pasting the text directly instead of uploading the PDF.")
             elif "json" in error_msg:
                 st.error("⚠️ Could not parse the resume. Please check the format and try again.")
             else:

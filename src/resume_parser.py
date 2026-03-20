@@ -45,8 +45,18 @@ def extract_text_from_pdf(pdf_path: str) -> str:
             t = page.extract_text()
             if t:
                 parts.append(t)
-    return "\n".join(parts)
-
+    text = "\n".join(parts)
+    
+    # If pdfplumber got very little text, try extracting words directly
+    if len(text.strip()) < 100:
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                words = page.extract_words()
+                if words:
+                    parts.append(" ".join(w["text"] for w in words))
+        text = "\n".join(parts)
+    
+    return text
 
 def _call_llm(prompt: str) -> str:
     response = _client.chat.completions.create(
