@@ -20,6 +20,9 @@ Results (descriptive):
 
 ---
 
+## Live Demo
+Click on https://resume-shortlisting-system.streamlit.app/
+
 ## Quick Start
 
 ```bash
