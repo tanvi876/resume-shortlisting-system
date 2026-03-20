@@ -1,4 +1,4 @@
-# 🎯 RecruitAI — AI Resume Shortlisting & Interview Assistant
+# RecruitAI : AI Resume Shortlisting & Interview Assistant
 
 An end-to-end system that automates candidate evaluation by parsing resumes, scoring them against Job Descriptions across 4 dimensions, verifying GitHub claims, and generating tailored interview question sets.
 
@@ -9,8 +9,11 @@ An end-to-end system that automates candidate evaluation by parsing resumes, sco
 
 ## Demo
 
+Main UI
 ![Main UI](assets/1.png)
+Add a JD text, and upload the resume. Click on "Run Evaluation":
 ![Add a JD text, and upload the resume. Click on "Run Evaluation":](assets/3.png)
+Results (descriptive):
 ![Results (descriptive):](assets/4.png)
 ![](assets/5.png)
 ![Also generates questions for the candidate:](assets/6.png)
