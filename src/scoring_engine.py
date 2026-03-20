@@ -1,12 +1,13 @@
 from __future__ import annotations
-import json, re
+import json
+import re
 import numpy as np
-import anthropic
+from groq import Groq
 from sentence_transformers import SentenceTransformer
-from .config import ANTHROPIC_API_KEY, LLM_MODEL, EMBEDDING_MODEL, SCORE_WEIGHTS
+from .config import GROQ_API_KEY, LLM_MODEL, EMBEDDING_MODEL, SCORE_WEIGHTS
 from .models import ParsedResume, JobDescription, DimensionalScore, MultiDimensionalScores
 
-_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+_client = Groq(api_key=GROQ_API_KEY)
 _embedding_model = None
 
 
@@ -54,7 +55,7 @@ def _score_semantic_similarity(resume: ParsedResume, jd: JobDescription) -> Dime
         zip(jd_terms, [resume_terms[i] for i in best_idx], best_scores),
         key=lambda x: -x[2]
     )[:5]
-    evidence = [f"'{j}' ↔ '{r}' (sim={s:.2f})" for j, r, s in top_pairs]
+    evidence = [f"'{j}' <-> '{r}' (sim={s:.2f})" for j, r, s in top_pairs]
     near_misses = [
         f"JD wants '{jd_terms[i]}', candidate has '{resume_terms[best_idx[i]]}' (semantically equivalent)"
         for i in range(len(jd_terms))
@@ -62,16 +63,17 @@ def _score_semantic_similarity(resume: ParsedResume, jd: JobDescription) -> Dime
     ][:3]
     explanation = f"Average semantic match: {avg_sim:.2%} across {len(jd_terms)} JD requirements."
     if near_misses:
-        explanation += f" Near-equivalences: {'; '.join(near_misses)}."
+        explanation += " Near-equivalences: " + "; ".join(near_misses) + "."
     return DimensionalScore(score=score, explanation=explanation, evidence=evidence)
 
 
 def _llm_score(prompt: str) -> DimensionalScore:
-    response = _client.messages.create(
-        model=LLM_MODEL, max_tokens=600,
+    response = _client.chat.completions.create(
+        model=LLM_MODEL,
         messages=[{"role": "user", "content": prompt}],
+        max_tokens=600,
     )
-    raw = response.content[0].text.strip()
+    raw = response.choices[0].message.content.strip()
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
     return DimensionalScore(**json.loads(raw))
@@ -83,39 +85,39 @@ def _score_achievement(resume: ParsedResume, jd: JobDescription) -> DimensionalS
         all_achievements.extend(exp.achievements)
     if not all_achievements:
         return DimensionalScore(score=20, explanation="No quantified achievements found.", evidence=[])
-    achievements_text = "\n".join(f"- {a}" for a in all_achievements[:15])
-    prompt = f"""Score this candidate's achievements for the {jd.title} role (seniority: {jd.seniority_level}) from 0-100.
-Consider: quantification (numbers/%), relevance to role, ambition, breadth of impact.
-
-Achievements:
-{achievements_text}
-
-Return ONLY JSON (no markdown):
-{{"score": 75, "explanation": "one paragraph", "evidence": ["achievement 1", "achievement 2"]}}"""
+    achievements_text = "\n".join("- " + a for a in all_achievements[:15])
+    prompt = (
+        "Score this candidate's achievements for the " + jd.title + " role"
+        " (seniority: " + jd.seniority_level + ") from 0-100.\n"
+        "Consider: quantification (numbers/%), relevance, ambition, breadth of impact.\n\n"
+        "Achievements:\n" + achievements_text + "\n\n"
+        "Return ONLY JSON (no markdown):\n"
+        "{\"score\": 75, \"explanation\": \"one paragraph\", \"evidence\": [\"achievement 1\", \"achievement 2\"]}"
+    )
     return _llm_score(prompt)
 
 
 def _score_ownership(resume: ParsedResume, jd: JobDescription) -> DimensionalScore:
     lines = []
     for exp in resume.work_experience:
-        lines.append(f"[{exp.title} at {exp.company}]")
+        lines.append("[" + exp.title + " at " + exp.company + "]")
         for r in exp.responsibilities[:3]:
-            lines.append(f"  - {r}")
+            lines.append("  - " + r)
         for a in exp.achievements[:2]:
-            lines.append(f"  * {a}")
+            lines.append("  * " + a)
     for p in resume.projects[:3]:
-        lines.append(f"[Project: {p.get('name','')}] {p.get('description','')}")
+        lines.append("[Project: " + p.get("name", "") + "] " + p.get("description", ""))
     if not lines:
         return DimensionalScore(score=15, explanation="Insufficient work history.", evidence=[])
     work_text = "\n".join(lines[:40])
-    prompt = f"""Score ownership/leadership signals for a candidate applying for {jd.title} (seniority: {jd.seniority_level}) from 0-100.
-Consider: leadership, initiative, first-person ownership language, scope growth, cross-functional impact.
-
-Work history:
-{work_text}
-
-Return ONLY JSON (no markdown):
-{{"score": 65, "explanation": "one paragraph citing specific resume language", "evidence": ["phrase 1", "phrase 2"]}}"""
+    prompt = (
+        "Score ownership/leadership signals for a candidate applying for "
+        + jd.title + " (seniority: " + jd.seniority_level + ") from 0-100.\n"
+        "Consider: leadership, initiative, first-person ownership language, scope growth.\n\n"
+        "Work history:\n" + work_text + "\n\n"
+        "Return ONLY JSON (no markdown):\n"
+        "{\"score\": 65, \"explanation\": \"one paragraph citing specific resume language\", \"evidence\": [\"phrase 1\", \"phrase 2\"]}"
+    )
     return _llm_score(prompt)
 
 
@@ -128,9 +130,13 @@ def compute_scores(resume: ParsedResume, jd: JobDescription) -> MultiDimensional
         exact.score * SCORE_WEIGHTS["exact_match"]
         + semantic.score * SCORE_WEIGHTS["semantic_similarity"]
         + achievement.score * SCORE_WEIGHTS["achievement"]
-        + ownership.score * SCORE_WEIGHTS["ownership"], 1
+        + ownership.score * SCORE_WEIGHTS["ownership"],
+        1,
     )
     return MultiDimensionalScores(
-        exact_match=exact, semantic_similarity=semantic,
-        achievement=achievement, ownership=ownership, overall=overall,
+        exact_match=exact,
+        semantic_similarity=semantic,
+        achievement=achievement,
+        ownership=ownership,
+        overall=overall,
     )

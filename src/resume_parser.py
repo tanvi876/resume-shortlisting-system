@@ -1,12 +1,12 @@
 from __future__ import annotations
-import json, re
-import google.generativeai as genai
+import json
+import re
 import pdfplumber
-from .config import GEMINI_API_KEY, LLM_MODEL
+from groq import Groq
+from .config import GROQ_API_KEY, LLM_MODEL
 from .models import ParsedResume, WorkExperience, Education
 
-genai.configure(api_key=GEMINI_API_KEY)
-_model = genai.GenerativeModel(LLM_MODEL)
+_client = Groq(api_key=GROQ_API_KEY)
 
 _EXTRACTION_PROMPT = """You are a resume parsing expert. Extract all information from the resume text below and return it as a single JSON object matching this exact schema. Return ONLY the JSON, no markdown, no explanation.
 
@@ -48,8 +48,12 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 
 
 def _call_llm(prompt: str) -> str:
-    response = _model.generate_content(prompt)
-    raw = response.text.strip()
+    response = _client.chat.completions.create(
+        model=LLM_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=2000,
+    )
+    raw = response.choices[0].message.content.strip()
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
     return raw
