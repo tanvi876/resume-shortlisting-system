@@ -1,0 +1,15 @@
+{
+  "title": "Senior Backend Engineer – Data Infrastructure",
+  "required_skills": ["Python", "Apache Kafka", "Distributed Systems", "PostgreSQL", "Docker"],
+  "preferred_skills": ["Kubernetes", "Go", "AWS", "Redis", "gRPC"],
+  "min_years_experience": 3,
+  "responsibilities": [
+    "Design and maintain high-throughput event streaming pipelines",
+    "Own reliability and SLOs for core data infrastructure services",
+    "Mentor junior engineers and drive technical standards",
+    "Collaborate with product teams to define data contracts"
+  ],
+  "tools_and_technologies": ["Kafka", "Python", "PostgreSQL", "Kubernetes", "Docker", "AWS"],
+  "seniority_level": "senior",
+  "raw_text": "Senior Backend Engineer – Data Infrastructure role requiring strong Python, Kafka, and distributed systems expertise."
+}
