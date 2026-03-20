@@ -1,0 +1,54 @@
+Priya Nair
+priya.nair@email.com | +91-9876543210
+github.com/priyanair | linkedin.com/in/priya-nair-dev
+
+SUMMARY
+Backend engineer with 4 years of experience building distributed systems and data pipelines.
+Strong focus on reliability, observability, and developer tooling.
+
+EXPERIENCE
+
+Senior Software Engineer — DataFlow Inc. (Jan 2022 – Present)
+Technologies: Python, Apache Kafka, Redis, PostgreSQL, AWS (EC2, S3, Lambda), Docker, Kubernetes
+- Redesigned the event ingestion pipeline, increasing throughput from 20K to 180K events/second (9x improvement)
+- Led a team of 3 engineers to migrate from monolith to microservices, reducing deployment time by 65%
+- Reduced P99 API latency from 840ms to 120ms by introducing Redis caching and async processing
+- Mentored 2 junior engineers; authored internal documentation that cut onboarding time by 40%
+
+Software Engineer — TechBridge Solutions (Jun 2020 – Dec 2021)
+Technologies: Python, Django, RabbitMQ, MySQL, AWS SQS, Elasticsearch
+- Built a notification delivery service handling 500K+ messages/day with 99.97% delivery rate
+- Implemented rate limiting and retry logic that eliminated ~95% of failed deliveries
+- Integrated Elasticsearch for full-text search, reducing product search query time by 70%
+
+SKILLS
+Python, Go, SQL, Bash
+Apache Kafka, RabbitMQ, Redis, Elasticsearch
+PostgreSQL, MySQL, DynamoDB
+Docker, Kubernetes, AWS (EC2, S3, Lambda, SQS, RDS)
+Distributed systems, Event-driven architecture, REST APIs, gRPC
+System design, Code review, Technical writing
+
+PROJECTS
+- kafka-lag-exporter: Open-source Prometheus exporter for Kafka consumer lag (github.com/priyanair/kafka-lag-exporter, 230 stars)
+- async-rate-limiter: Token-bucket rate limiter library for Python asyncio (PyPI, 1.2K monthly downloads)
+
+EDUCATION
+B.Tech, Computer Science Engineering — NIT Calicut (2020)
+
+CERTIFICATIONS
+AWS Certified Solutions Architect – Associate (2022){
+  "title": "Senior Backend Engineer – Data Infrastructure",
+  "required_skills": ["Python", "Apache Kafka", "Distributed Systems", "PostgreSQL", "Docker"],
+  "preferred_skills": ["Kubernetes", "Go", "AWS", "Redis", "gRPC"],
+  "min_years_experience": 3,
+  "responsibilities": [
+    "Design and maintain high-throughput event streaming pipelines",
+    "Own reliability and SLOs for core data infrastructure services",
+    "Mentor junior engineers and drive technical standards",
+    "Collaborate with product teams to define data contracts"
+  ],
+  "tools_and_technologies": ["Kafka", "Python", "PostgreSQL", "Kubernetes", "Docker", "AWS"],
+  "seniority_level": "senior",
+  "raw_text": "Senior Backend Engineer – Data Infrastructure role requiring strong Python, Kafka, and distributed systems expertise."
+}

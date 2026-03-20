@@ -15,9 +15,9 @@ Flow:
 """
 
 from __future__ import annotations
-import anthropic
+#import anthropic
 
-from .config import ANTHROPIC_API_KEY, LLM_MODEL
+from .config import GEMINI_API_KEY, LLM_MODEL
 from .models import (
     ParsedResume, JobDescription, CandidateReport,
 )

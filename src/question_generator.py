@@ -1,28 +1,11 @@
-"""
-Tier Classifier & Interview Question Generator
-===============================================
-Classifies candidates into Tier A/B/C and generates a tailored interview
-question set. Questions are specific to the candidate's profile — not generic.
-
-Tier logic:
-  A (≥72 overall): Strong match. Fast-track. Questions probe depth and edge cases.
-  B (48-71):       Promising. Technical screen. Questions target gaps and verify claims.
-  C (<48):         Significant gaps. Questions are foundational to calibrate fit.
-"""
-
 from __future__ import annotations
-import json
-import re
-import anthropic
+import json, re
+import google.generativeai as genai
+from .config import GEMINI_API_KEY, LLM_MODEL, TIER_A_MIN, TIER_B_MIN, QUESTIONS_PER_TIER
+from .models import ParsedResume, JobDescription, MultiDimensionalScores, Tier, InterviewQuestion
 
-from .config import ANTHROPIC_API_KEY, LLM_MODEL, TIER_A_MIN, TIER_B_MIN, QUESTIONS_PER_TIER
-from .models import (
-    ParsedResume, JobDescription, MultiDimensionalScores,
-    Tier, InterviewQuestion,
-)
-
-_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-
+genai.configure(api_key=GEMINI_API_KEY)
+_model = genai.GenerativeModel(LLM_MODEL)
 
 def classify_tier(scores: MultiDimensionalScores) -> tuple[Tier, str]:
     """
@@ -153,15 +136,8 @@ def generate_questions(
         own_expl=scores.ownership.explanation,
     )
 
-    response = _client.messages.create(
-        model=LLM_MODEL,
-        max_tokens=2000,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    raw = response.content[0].text.strip()
+    response = _model.generate_content(prompt)
+    raw = response.text.strip()
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
-
-    questions_data = json.loads(raw)
-    return [InterviewQuestion(**q) for q in questions_data]
+    return [InterviewQuestion(**q) for q in json.loads(raw)]

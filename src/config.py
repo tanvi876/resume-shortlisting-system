@@ -3,11 +3,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
+GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
 
-LLM_MODEL = "claude-sonnet-4-6"
-FAST_LLM_MODEL = "claude-haiku-4-5-20251001"
+LLM_MODEL = "gemini-2.0-flash"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
 SCORE_WEIGHTS = {

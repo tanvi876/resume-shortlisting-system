@@ -1,21 +1,12 @@
-"""
-Resume Parser
-=============
-Accepts raw resume text (or a PDF path) and uses an LLM to extract a
-fully-structured ParsedResume object. PDF → text is done with pdfplumber;
-structured extraction is done with a single Claude call requesting JSON.
-"""
-
 from __future__ import annotations
-import json
-import re
-import anthropic
+import json, re
+import google.generativeai as genai
 import pdfplumber
-
-from .config import ANTHROPIC_API_KEY, LLM_MODEL
+from .config import GEMINI_API_KEY, LLM_MODEL
 from .models import ParsedResume, WorkExperience, Education
 
-_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
+_model = genai.GenerativeModel(LLM_MODEL)
 
 _EXTRACTION_PROMPT = """You are a resume parsing expert. Extract all information from the resume text below and return it as a single JSON object matching this exact schema. Return ONLY the JSON, no markdown, no explanation.
 
@@ -29,93 +20,58 @@ Schema:
   "years_of_experience": number,
   "skills": ["list of skill strings"],
   "tools_and_technologies": ["list of tools/tech strings"],
-  "education": [
-    {"institution": "string", "degree": "string", "field": "string", "year": number or null}
-  ],
-  "work_experience": [
-    {
-      "company": "string",
-      "title": "string",
-      "duration_months": number,
-      "responsibilities": ["strings"],
-      "achievements": ["quantified achievement strings — e.g. 'Reduced latency by 40%'"],
-      "technologies": ["strings"]
-    }
-  ],
-  "projects": [
-    {"name": "string", "description": "string", "technologies": ["strings"], "url": "string or null"}
-  ],
+  "education": [{"institution": "string", "degree": "string", "field": "string", "year": number or null}],
+  "work_experience": [{"company": "string", "title": "string", "duration_months": number, "responsibilities": ["strings"], "achievements": ["quantified achievement strings"], "technologies": ["strings"]}],
+  "projects": [{"name": "string", "description": "string", "technologies": ["strings"], "url": "string or null"}],
   "certifications": ["strings"],
-  "achievements": ["standalone quantified achievements not tied to a specific role"]
+  "achievements": ["standalone quantified achievements"]
 }
 
 Rules:
-- For years_of_experience, calculate from work history dates. If unclear, estimate conservatively.
-- Separate "skills" (conceptual, e.g. "Machine Learning") from "tools_and_technologies" (concrete, e.g. "PyTorch").
-- For duration_months in work experience, convert "2 years 3 months" → 27. If only year range given, multiply years × 12.
-- achievements should be QUANTIFIED strings (contains numbers/percentages/scale). Don't include vague statements.
-- Extract github_url and linkedin_url if mentioned anywhere in the resume.
+- years_of_experience: calculate from work history. If unclear, estimate conservatively.
+- Separate skills (conceptual) from tools_and_technologies (concrete).
+- duration_months: convert year ranges to months.
+- achievements must contain numbers/percentages. Skip vague statements.
 
 Resume text:
 """
 
 
 def extract_text_from_pdf(pdf_path: str) -> str:
-    """Extract plain text from a PDF file using pdfplumber."""
-    text_parts = []
+    parts = []
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text_parts.append(page_text)
-    return "\n".join(text_parts)
+            t = page.extract_text()
+            if t:
+                parts.append(t)
+    return "\n".join(parts)
+
+
+def _call_llm(prompt: str) -> str:
+    response = _model.generate_content(prompt)
+    raw = response.text.strip()
+    raw = re.sub(r"^```(?:json)?\s*", "", raw)
+    raw = re.sub(r"\s*```$", "", raw)
+    return raw
 
 
 def parse_resume(text: str | None = None, pdf_path: str | None = None) -> ParsedResume:
-    """
-    Parse a resume from raw text or a PDF path.
-    Returns a ParsedResume with all fields populated by the LLM.
-    """
     if pdf_path:
         raw_text = extract_text_from_pdf(pdf_path)
     elif text:
         raw_text = text
     else:
-        raise ValueError("Must provide either text or pdf_path")
+        raise ValueError("Must provide text or pdf_path")
 
-    if not raw_text.strip():
-        raise ValueError("Resume text is empty after extraction")
-
-    response = _client.messages.create(
-        model=LLM_MODEL,
-        max_tokens=2000,
-        messages=[{"role": "user", "content": _EXTRACTION_PROMPT + raw_text}],
-    )
-
-    raw_json = response.content[0].text.strip()
-
-    # Strip markdown code fences if the model wraps them
-    raw_json = re.sub(r"^```(?:json)?\s*", "", raw_json)
-    raw_json = re.sub(r"\s*```$", "", raw_json)
-
-    try:
-        data = json.loads(raw_json)
-    except json.JSONDecodeError as e:
-        raise ValueError(f"LLM returned invalid JSON: {e}\nRaw output:\n{raw_json}") from e
-
-    # Convert nested dicts to proper model objects
+    raw_json = _call_llm(_EXTRACTION_PROMPT + raw_text)
+    data = json.loads(raw_json)
     data["work_experience"] = [WorkExperience(**w) for w in data.get("work_experience", [])]
     data["education"] = [Education(**e) for e in data.get("education", [])]
     data["raw_text"] = raw_text
-
     return ParsedResume(**data)
 
 
 def parse_jd_text(jd_raw: str) -> dict:
-    """
-    Extract structured fields from a raw job description string.
-    Returns a plain dict suitable for constructing a JobDescription.
-    """
     prompt = """Extract information from this job description and return ONLY a JSON object:
 {
   "title": "string",
@@ -130,14 +86,6 @@ def parse_jd_text(jd_raw: str) -> dict:
 Job Description:
 """ + jd_raw
 
-    response = _client.messages.create(
-        model=LLM_MODEL,
-        max_tokens=1000,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = response.content[0].text.strip()
-    raw = re.sub(r"^```(?:json)?\s*", "", raw)
-    raw = re.sub(r"\s*```$", "", raw)
-    data = json.loads(raw)
+    data = json.loads(_call_llm(prompt))
     data["raw_text"] = jd_raw
     return data
