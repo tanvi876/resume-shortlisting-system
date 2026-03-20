@@ -86,4 +86,5 @@ def generate_questions(
     raw = response.choices[0].message.content.strip()
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
+    raw = re.sub(r'[\x00-\x1f\x7f]', ' ', raw)
     return [InterviewQuestion(**q) for q in json.loads(raw)]
