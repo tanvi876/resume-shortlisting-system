@@ -291,10 +291,20 @@ if run:
                 skip_verification=skip_verification,
             )
         except Exception as e:
-            st.error(f"Evaluation failed: {e}")
-            st.exception(e)
-            st.stop()
-
+            error_msg = str(e).lower()
+            if "rate limit" in error_msg or "429" in error_msg:
+                st.error("⚠️ API rate limit hit. Please wait a moment and try again.")
+            elif "invalid api key" in error_msg or "401" in error_msg:
+                st.error("⚠️ API key issue. Please check your GROQ_API_KEY.")
+            elif "validation" in error_msg:
+                st.error("⚠️ Resume too sparse to evaluate. Please provide a more detailed resume.")
+            elif "json" in error_msg:
+                st.error("⚠️ Could not parse the resume. Please check the format and try again.")
+            else:
+                st.error("⚠️ Something went wrong. Please try again.")
+            with st.expander("Advanced: "):
+                st.exception(e)
+            st.stop() 
     st.markdown("---")
 
     # ── Result Header ─────────────────────────────────────────────────────────
